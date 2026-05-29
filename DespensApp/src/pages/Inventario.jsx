@@ -23,8 +23,8 @@ export default function Inventario() {
         setCargando(true);
         try {
             const [resInventario, resIngredientes] = await Promise.all([
-                fetch(`http://localhost:8000/inventario/${ID_USUARIO}`),
-                fetch(`http://localhost:8000/ingredientes/`)
+                fetch(`${import.meta.env.VITE_API_URL}/inventario/${ID_USUARIO}`),
+                fetch(`${import.meta.env.VITE_API_URL}/ingredientes/`)
             ]);
 
             if (resInventario.ok && resIngredientes.ok) {
@@ -50,7 +50,7 @@ export default function Inventario() {
         if (!formIngredienteId || !formCantidad) return;
 
         try {
-            const response = await fetch('http://localhost:8000/inventario/', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/inventario/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

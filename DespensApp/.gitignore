@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Dependencias
+node_modules/
+
+# Archivos de compilación de producción
+dist/
+dist-ssr/
+
+# Variables de entorno (¡Asegúrate de que esto esté presente!)
+.env
+.env.*
+.env.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

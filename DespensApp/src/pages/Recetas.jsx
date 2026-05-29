@@ -29,8 +29,8 @@ export default function Recetas() {
     const inicializarDatos = async () => {
         try {
             const [resRecetas, resIngredientes] = await Promise.all([
-                fetch(`http://localhost:8000/recetas/`),
-                fetch(`http://localhost:8000/ingredientes/`)
+                fetch(`${import.meta.env.VITE_API_URL}/recetas/`),
+                fetch(`${import.meta.env.VITE_API_URL}/ingredientes/`)
             ]);
 
             if (resRecetas.ok) setRecetas(await resRecetas.json());
@@ -44,7 +44,7 @@ export default function Recetas() {
 
     const cargarRecetas = async (idRecetaAActualizar = null) => {
         try {
-            const response = await fetch(`http://localhost:8000/recetas/`);
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas/`);
             if (response.ok) {
                 const data = await response.json();
                 setRecetas(data);
@@ -97,7 +97,7 @@ export default function Recetas() {
 
     const handleCocinar = async (id_receta, nombre_receta) => {
         try {
-            const response = await fetch(`http://localhost:8000/recetas/${id_receta}/cocinar/?id_usuario=${ID_USUARIO}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${id_receta}/cocinar/?id_usuario=${ID_USUARIO}`, {
                 method: 'POST',
             });
 
@@ -123,7 +123,7 @@ export default function Recetas() {
         }
 
         try {
-            const response = await fetch(`http://localhost:8000/recetas/${recetaActiva.id}/ingredientes/`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${recetaActiva.id}/ingredientes/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -146,7 +146,7 @@ export default function Recetas() {
         if (!recetaActiva) return;
 
         try {
-            const response = await fetch(`http://localhost:8000/recetas/${recetaActiva.id}/ingredientes/${id_ingrediente}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${recetaActiva.id}/ingredientes/${id_ingrediente}`, {
                 method: 'DELETE'
             });
 
@@ -189,7 +189,7 @@ export default function Recetas() {
         }
 
         try {
-            const resReceta = await fetch('http://localhost:8000/recetas/', {
+            const resReceta = await fetch(`${import.meta.env.VITE_API_URL}/recetas/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -203,7 +203,7 @@ export default function Recetas() {
                 const recetaCreada = await resReceta.json();
 
                 for (const req of nuevosIngredientes) {
-                    await fetch(`http://localhost:8000/recetas/${recetaCreada.id}/ingredientes/`, {
+                    await fetch(`${import.meta.env.VITE_API_URL}/recetas/${recetaCreada.id}/ingredientes/`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

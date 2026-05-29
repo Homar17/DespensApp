@@ -16,7 +16,7 @@ export default function Auth({ onLoginSuccess }) {
         setError('');
         setCargando(true);
 
-        const url = isLogin ? 'http://localhost:8000/login/' : 'http://localhost:8000/usuarios/';
+        const url = isLogin ? `${import.meta.env.VITE_API_URL}/login/` : `${import.meta.env.VITE_API_URL}/usuarios/`;
 
         const payload = isLogin
             ? { user_name: userName, contrasena: contrasena }

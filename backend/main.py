@@ -5,10 +5,23 @@ from typing import List
 from decimal import Decimal
 from datetime import date
 from sqlalchemy import cast, Date
+import bcrypt
 
 import models
 import schemas
 from database import engine, SessionLocal
+
+# Funciones de seguridad nativas con bcrypt (sin passlib)
+def obtener_hash_contrasena(contrasena: str) -> str:
+    salt = bcrypt.gensalt()
+    contrasena_bytes = contrasena.encode('utf-8')
+    hash_bytes = bcrypt.hashpw(contrasena_bytes, salt)
+    return hash_bytes.decode('utf-8')
+
+def verificar_contrasena(contrasena_plana: str, contrasena_hasheada: str) -> bool:
+    contrasena_plana_bytes = contrasena_plana.encode('utf-8')
+    contrasena_hasheada_bytes = contrasena_hasheada.encode('utf-8')
+    return bcrypt.checkpw(contrasena_plana_bytes, contrasena_hasheada_bytes)
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -97,11 +110,11 @@ def crear_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db))
     db_usuario = db.query(models.Usuario).filter(models.Usuario.user_name == usuario.user_name).first()
     if db_usuario:
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
-        
+
     nuevo_usuario = models.Usuario(
         nombre=usuario.nombre,
         user_name=usuario.user_name,
-        contrasena=usuario.contrasena 
+        contrasena=obtener_hash_contrasena(usuario.contrasena)
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -251,26 +264,23 @@ def cocinar_receta(id_receta: int, id_usuario: int, db: Session = Depends(get_db
     if not ingredientes_receta:
         raise HTTPException(status_code=400, detail="La receta no tiene ingredientes registrados")
 
-    # Contadores para macros
     total_cal = Decimal('0.0')
     total_prot = Decimal('0.0')
     total_carb = Decimal('0.0')
     total_gras = Decimal('0.0')
 
     for req in ingredientes_receta:
-        # 1. Cálculos nutricionales (Verificamos si es gramaje/litros o piezas)
         db_ingrediente = req.ingrediente
         if db_ingrediente.unidad.nombre.lower() in ['gr', 'ml']:
             factor = req.cantidad_necesaria / Decimal('100.0')
         else:
-            factor = req.cantidad_necesaria # Si son piezas, el valor es por unidad directa
+            factor = req.cantidad_necesaria
 
         total_cal += db_ingrediente.calorias_por_100 * factor
         total_prot += db_ingrediente.proteina_por_100 * factor
         total_carb += db_ingrediente.carbs_por_100 * factor
         total_gras += db_ingrediente.grasas_por_100 * factor
 
-        # 2. Descuento de inventario
         inventario = db.query(models.Inventario).filter(
             models.Inventario.id_usuario == id_usuario,
             models.Inventario.id_ingrediente == req.id_ingrediente
@@ -314,7 +324,6 @@ def cocinar_receta(id_receta: int, id_usuario: int, db: Session = Depends(get_db
                 )
                 db.add(nuevo_item)
 
-    # 3. Guardado en el historial de consumo
     nuevo_historial = models.HistorialConsumo(
         id_usuario=id_usuario,
         id_receta=id_receta,
@@ -348,10 +357,10 @@ def eliminar_ingrediente_receta(id_receta: int, id_ingrediente: int, db: Session
 @app.post("/login/", response_model=schemas.Usuario)
 def login_usuario(credenciales: schemas.UsuarioLogin, db: Session = Depends(get_db)):
     db_usuario = db.query(models.Usuario).filter(models.Usuario.user_name == credenciales.user_name).first()
-    
-    if not db_usuario or db_usuario.contrasena != credenciales.contrasena:
+
+    if not db_usuario or not verificar_contrasena(credenciales.contrasena, db_usuario.contrasena):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
-        
+
     return db_usuario
 
 

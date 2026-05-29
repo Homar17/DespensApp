@@ -31,9 +31,9 @@ export default function ListaCompras() {
         setCargando(true);
         try {
             const [resLista, resIngredientes, resUnidades] = await Promise.all([
-                fetch(`http://localhost:8000/compras/${ID_USUARIO}`),
-                fetch(`http://localhost:8000/ingredientes/`),
-                fetch(`http://localhost:8000/unidades/`)
+                fetch(`${import.meta.env.VITE_API_URL}/compras/${ID_USUARIO}`),
+                fetch(`${import.meta.env.VITE_API_URL}/ingredientes/`),
+                fetch(`${import.meta.env.VITE_API_URL}/unidades/`)
             ]);
 
             if (resLista.ok && resIngredientes.ok && resUnidades.ok) {
@@ -57,7 +57,7 @@ export default function ListaCompras() {
 
     const toggleComprado = async (id_ingrediente, estado_actual) => {
         try {
-            const response = await fetch(`http://localhost:8000/compras/${ID_USUARIO}/${id_ingrediente}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/compras/${ID_USUARIO}/${id_ingrediente}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ comprado: !estado_actual })
@@ -78,7 +78,7 @@ export default function ListaCompras() {
         if (!formIngredienteId || !formCantidad) return;
 
         try {
-            const response = await fetch('http://localhost:8000/compras/', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/compras/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -102,7 +102,7 @@ export default function ListaCompras() {
         if (!nuevoIngNombre || !nuevoIngUnidadId) return;
 
         try {
-            const response = await fetch('http://localhost:8000/ingredientes/batch/', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/ingredientes/batch/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify([{
@@ -118,7 +118,7 @@ export default function ListaCompras() {
             if (response.ok) {
                 const nuevosIngredientes = await response.json();
 
-                const resIngredientes = await fetch(`http://localhost:8000/ingredientes/`);
+                const resIngredientes = await fetch(`${import.meta.env.VITE_API_URL}/ingredientes/`);
                 const catalogoActualizado = await resIngredientes.json();
                 setCatalogoIngredientes(catalogoActualizado);
 
