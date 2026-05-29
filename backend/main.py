@@ -29,11 +29,8 @@ app = FastAPI(title="DespensApp API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://despens-app.vercel.app"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"], # Volvemos a aceptar todo
+    allow_credentials=False, # LA CLAVE: Desactivamos las cookies estrictas
     allow_methods=["*"],
     allow_headers=["*"],
 )
