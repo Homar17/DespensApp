@@ -39,6 +39,9 @@ export default function Inventario() {
         }
     };
 
+    // FILTRO VISUAL: Solo mostramos elementos que tengan más de 0
+    const inventarioVisible = inventario.filter(item => item.cantidad_actual > 0);
+
     const formatearCantidad = (cantidad, unidad) => {
         const cant = parseFloat(cantidad);
         if (unidad === 'gr' && cant >= 1000) return `${(cant / 1000).toFixed(2)} kg`;
@@ -50,14 +53,22 @@ export default function Inventario() {
         e.preventDefault();
         if (!formIngredienteId || !formCantidad) return;
 
-        let cantidadMandar = parseFloat(formCantidad);
+        let cantidadIngresada = parseFloat(formCantidad);
         const idIngredienteInt = parseInt(formIngredienteId);
+
+        // Candado 1: Prevenir que metan un 0 o número negativo manualmente
+        if (cantidadIngresada <= 0) {
+            alert("Por favor ingresa una cantidad mayor a 0.");
+            return;
+        }
+
+        let cantidadMandar = cantidadIngresada;
 
         // Validaciones si estamos en modo "retirar"
         if (modo === 'retirar') {
             const itemExistente = inventario.find(item => item.id_ingrediente === idIngredienteInt);
             
-            if (!itemExistente) {
+            if (!itemExistente || itemExistente.cantidad_actual <= 0) {
                 alert("No tienes este ingrediente en tu inventario para retirar.");
                 return;
             }
@@ -125,13 +136,14 @@ export default function Inventario() {
                     </button>
                 </div>
 
-                {inventario.length === 0 ? (
+                {/* Usamos inventarioVisible en lugar de inventario completo */}
+                {inventarioVisible.length === 0 ? (
                     <div className="text-center mt-20 p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
                         <p className="text-gray-500">Tu inventario está vacío.</p>
                     </div>
                 ) : (
                     <div className="grid gap-3">
-                        {inventario.map((item) => (
+                        {inventarioVisible.map((item) => (
                             <div
                                 key={item.id_ingrediente}
                                 className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex justify-between items-center"
@@ -145,7 +157,6 @@ export default function Inventario() {
                                     </span>
                                 </div>
                                 
-                                {/* Botón rápido para restar desde la tarjeta */}
                                 <button 
                                     onClick={() => abrirParaRetirar(item.id_ingrediente)}
                                     className="bg-red-50 text-red-500 p-2 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
@@ -176,7 +187,6 @@ export default function Inventario() {
                     </button>
                 </div>
 
-                {/* Selector de Modo (Agregar / Retirar) */}
                 <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
                     <button
                         type="button"
@@ -204,9 +214,8 @@ export default function Inventario() {
                             required
                         >
                             <option value="" disabled>Selecciona un ingrediente...</option>
-                            {/* Si estamos en modo retirar, solo mostramos los ingredientes que sí tenemos en la alacena */}
                             {modo === 'retirar' 
-                                ? inventario.map(item => (
+                                ? inventarioVisible.map(item => (
                                     <option key={item.id_ingrediente} value={item.id_ingrediente}>
                                         {item.ingrediente.nombre} (Disp: {item.cantidad_actual})
                                     </option>
@@ -227,6 +236,7 @@ export default function Inventario() {
                         <input
                             type="number"
                             step="0.01"
+                            min="0.01" /* Candado 2: Bloqueo nativo del input HTML */
                             className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Ej. 1500 (para 1.5kg)"
                             value={formCantidad}
