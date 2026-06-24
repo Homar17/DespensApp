@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, Plus, X, ArrowLeft, Edit2 } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, X, ArrowLeft, Edit2, Trash2 } from 'lucide-react';
 
 export default function ListaCompras() {
     const [lista, setLista] = useState([]);
@@ -12,7 +12,7 @@ export default function ListaCompras() {
     const [formCantidad, setFormCantidad] = useState('');
 
     const [modoCrearIngrediente, setModoCrearIngrediente] = useState(false);
-    const [itemEditando, setItemEditando] = useState(null); // Nuevo estado para saber si estamos editando
+    const [itemEditando, setItemEditando] = useState(null); 
     
     const [nuevoIngNombre, setNuevoIngNombre] = useState('');
     const [nuevoIngUnidadId, setNuevoIngUnidadId] = useState('');
@@ -102,7 +102,6 @@ export default function ListaCompras() {
         }
     };
 
-    // Nueva función para guardar la edición de un ingrediente existente
     const handleGuardarEdicion = async (e) => {
         e.preventDefault();
         if (!formCantidad || !itemEditando) return;
@@ -117,7 +116,7 @@ export default function ListaCompras() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    comprado: itemEditando.comprado, // Mantenemos el estado actual
+                    comprado: itemEditando.comprado,
                     cantidad_comprar: parseFloat(formCantidad) 
                 })
             });
@@ -131,7 +130,30 @@ export default function ListaCompras() {
         }
     };
 
-    // Función para abrir el menú específicamente en modo edición
+    // Nueva función para eliminar el ingrediente de la lista
+    const handleEliminar = async () => {
+        if (!itemEditando) return;
+        
+        // Ventana de confirmación nativa para evitar borrados accidentales
+        const confirmar = window.confirm(`¿Seguro que deseas eliminar ${itemEditando.ingrediente.nombre} de tu lista?`);
+        if (!confirmar) return;
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/compras/${ID_USUARIO}/${itemEditando.id_ingrediente}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                cerrarSheet();
+                cargarDatos();
+            } else {
+                alert("Hubo un problema al eliminar el registro.");
+            }
+        } catch (error) {
+            console.error("Error al eliminar:", error);
+        }
+    };
+
     const abrirParaEditar = (item) => {
         setItemEditando(item);
         setFormCantidad(item.cantidad_comprar.toString());
@@ -167,7 +189,6 @@ export default function ListaCompras() {
                     setFormIngredienteId(nuevosIngredientes[0].id);
                 }
 
-                // Limpiar campos de creación
                 setNuevoIngNombre('');
                 setNuevoIngUnidadId('');
                 setNuevoIngCalorias('');
@@ -184,7 +205,7 @@ export default function ListaCompras() {
     const cerrarSheet = () => {
         setIsSheetOpen(false);
         setModoCrearIngrediente(false);
-        setItemEditando(null); // Limpiamos el estado de edición
+        setItemEditando(null);
         setFormIngredienteId('');
         setFormCantidad('');
         setNuevoIngNombre('');
@@ -237,15 +258,14 @@ export default function ListaCompras() {
                                         className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform"
                                         onClick={() => toggleComprado(item.id_ingrediente, item.comprado)}
                                     >
-                                        <Circle className="text-gray-300 min-w-[24px]" size={24} />
+                                        <Circle className="text-gray-300 min-w-6" size={24} />
                                         <div className="flex-1">
                                             <h4 className="font-semibold text-gray-800">{item.ingrediente.nombre}</h4>
                                         </div>
-                                        {/* Modificación aquí: Botón interactivo para la cantidad */}
                                         <div 
                                             className="flex items-center gap-2 text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
                                             onClick={(e) => {
-                                                e.stopPropagation(); // Evita que se marque como comprado al editar
+                                                e.stopPropagation();
                                                 abrirParaEditar(item);
                                             }}
                                         >
@@ -266,7 +286,7 @@ export default function ListaCompras() {
                                         className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform"
                                         onClick={() => toggleComprado(item.id_ingrediente, item.comprado)}
                                     >
-                                        <CheckCircle2 className="text-green-500 min-w-[24px]" size={24} />
+                                        <CheckCircle2 className="text-green-500 min-w-6" size={24} />
                                         <div className="flex-1">
                                             <h4 className="font-medium text-gray-500 line-through">{item.ingrediente.nombre}</h4>
                                         </div>
@@ -299,9 +319,8 @@ export default function ListaCompras() {
                     }`}
             >
                 <div className="flex justify-between items-center mb-6">
-                    {/* Renderizado dinámico del título del Bottom Sheet */}
                     {itemEditando ? (
-                        <h3 className="text-xl font-bold text-gray-800">Editar Cantidad</h3>
+                        <h3 className="text-xl font-bold text-gray-800">Modificar Faltante</h3>
                     ) : modoCrearIngrediente ? (
                         <div className="flex items-center gap-2">
                             <button onClick={() => setModoCrearIngrediente(false)} className="text-gray-400 hover:text-gray-600 p-1">
@@ -318,7 +337,7 @@ export default function ListaCompras() {
                     </button>
                 </div>
 
-                {/* Vista 1: Formulario de Edición */}
+                {/* Vista 1: Formulario de Edición y Eliminación */}
                 {itemEditando ? (
                     <form onSubmit={handleGuardarEdicion} className="space-y-4 pb-8 animate-fade-in">
                         <div>
@@ -339,12 +358,22 @@ export default function ListaCompras() {
                                 required
                             />
                         </div>
-                        <button
-                            type="submit"
-                            className="w-full bg-blue-600 text-white font-bold rounded-xl p-4 mt-4 shadow-md active:bg-blue-700"
-                        >
-                            Actualizar cantidad
-                        </button>
+                        
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                type="button"
+                                onClick={handleEliminar}
+                                className="flex items-center justify-center gap-2 w-1/3 bg-red-50 text-red-600 font-bold rounded-xl p-4 shadow-sm hover:bg-red-100 active:scale-95 transition-all"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                            <button
+                                type="submit"
+                                className="w-2/3 bg-blue-600 text-white font-bold rounded-xl p-4 shadow-md active:bg-blue-700 active:scale-95 transition-all"
+                            >
+                                Actualizar
+                            </button>
+                        </div>
                     </form>
                 
                 ) : modoCrearIngrediente ? (
@@ -438,6 +467,7 @@ export default function ListaCompras() {
                         </button>
                     </form>
                 
+                {/* Vista 3: Formulario Agregar a la Lista */}
                 ) : (
                     <form onSubmit={handleAgregarManual} className="space-y-4 pb-8 animate-fade-in">
                         <div>
