@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, Plus, X, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, X, ArrowLeft, Edit2 } from 'lucide-react';
 
 export default function ListaCompras() {
     const [lista, setLista] = useState([]);
@@ -12,10 +12,10 @@ export default function ListaCompras() {
     const [formCantidad, setFormCantidad] = useState('');
 
     const [modoCrearIngrediente, setModoCrearIngrediente] = useState(false);
+    const [itemEditando, setItemEditando] = useState(null); // Nuevo estado para saber si estamos editando
+    
     const [nuevoIngNombre, setNuevoIngNombre] = useState('');
     const [nuevoIngUnidadId, setNuevoIngUnidadId] = useState('');
-
-    // Nuevos estados para valores nutricionales
     const [nuevoIngCalorias, setNuevoIngCalorias] = useState('');
     const [nuevoIngProteina, setNuevoIngProteina] = useState('');
     const [nuevoIngCarbs, setNuevoIngCarbs] = useState('');
@@ -76,6 +76,11 @@ export default function ListaCompras() {
     const handleAgregarManual = async (e) => {
         e.preventDefault();
         if (!formIngredienteId || !formCantidad) return;
+        
+        if (parseFloat(formCantidad) <= 0) {
+            alert("La cantidad debe ser mayor a 0");
+            return;
+        }
 
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/compras/`, {
@@ -95,6 +100,42 @@ export default function ListaCompras() {
         } catch (error) {
             console.error("Error al agregar a la lista:", error);
         }
+    };
+
+    // Nueva función para guardar la edición de un ingrediente existente
+    const handleGuardarEdicion = async (e) => {
+        e.preventDefault();
+        if (!formCantidad || !itemEditando) return;
+
+        if (parseFloat(formCantidad) <= 0) {
+            alert("La cantidad debe ser mayor a 0");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/compras/${ID_USUARIO}/${itemEditando.id_ingrediente}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    comprado: itemEditando.comprado, // Mantenemos el estado actual
+                    cantidad_comprar: parseFloat(formCantidad) 
+                })
+            });
+
+            if (response.ok) {
+                cerrarSheet();
+                cargarDatos();
+            }
+        } catch (error) {
+            console.error("Error al editar la cantidad:", error);
+        }
+    };
+
+    // Función para abrir el menú específicamente en modo edición
+    const abrirParaEditar = (item) => {
+        setItemEditando(item);
+        setFormCantidad(item.cantidad_comprar.toString());
+        setIsSheetOpen(true);
     };
 
     const handleCrearIngrediente = async (e) => {
@@ -117,16 +158,16 @@ export default function ListaCompras() {
 
             if (response.ok) {
                 const nuevosIngredientes = await response.json();
-
                 const resIngredientes = await fetch(`${import.meta.env.VITE_API_URL}/ingredientes/`);
                 const catalogoActualizado = await resIngredientes.json();
+                
                 setCatalogoIngredientes(catalogoActualizado);
 
                 if (nuevosIngredientes.length > 0) {
                     setFormIngredienteId(nuevosIngredientes[0].id);
                 }
 
-                // Limpiar campos
+                // Limpiar campos de creación
                 setNuevoIngNombre('');
                 setNuevoIngUnidadId('');
                 setNuevoIngCalorias('');
@@ -143,6 +184,7 @@ export default function ListaCompras() {
     const cerrarSheet = () => {
         setIsSheetOpen(false);
         setModoCrearIngrediente(false);
+        setItemEditando(null); // Limpiamos el estado de edición
         setFormIngredienteId('');
         setFormCantidad('');
         setNuevoIngNombre('');
@@ -199,8 +241,16 @@ export default function ListaCompras() {
                                         <div className="flex-1">
                                             <h4 className="font-semibold text-gray-800">{item.ingrediente.nombre}</h4>
                                         </div>
-                                        <div className="text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-lg">
-                                            {formatearCantidad(item.cantidad_comprar, item.ingrediente.unidad.nombre)}
+                                        {/* Modificación aquí: Botón interactivo para la cantidad */}
+                                        <div 
+                                            className="flex items-center gap-2 text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Evita que se marque como comprado al editar
+                                                abrirParaEditar(item);
+                                            }}
+                                        >
+                                            <span>{formatearCantidad(item.cantidad_comprar, item.ingrediente.unidad.nombre)}</span>
+                                            <Edit2 size={14} className="opacity-70" />
                                         </div>
                                     </div>
                                 ))}
@@ -220,7 +270,13 @@ export default function ListaCompras() {
                                         <div className="flex-1">
                                             <h4 className="font-medium text-gray-500 line-through">{item.ingrediente.nombre}</h4>
                                         </div>
-                                        <div className="text-gray-400 font-medium line-through">
+                                        <div 
+                                            className="text-gray-400 font-medium line-through bg-gray-200/50 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                abrirParaEditar(item);
+                                            }}
+                                        >
                                             {formatearCantidad(item.cantidad_comprar, item.ingrediente.unidad.nombre)}
                                         </div>
                                     </div>
@@ -243,7 +299,10 @@ export default function ListaCompras() {
                     }`}
             >
                 <div className="flex justify-between items-center mb-6">
-                    {modoCrearIngrediente ? (
+                    {/* Renderizado dinámico del título del Bottom Sheet */}
+                    {itemEditando ? (
+                        <h3 className="text-xl font-bold text-gray-800">Editar Cantidad</h3>
+                    ) : modoCrearIngrediente ? (
                         <div className="flex items-center gap-2">
                             <button onClick={() => setModoCrearIngrediente(false)} className="text-gray-400 hover:text-gray-600 p-1">
                                 <ArrowLeft size={20} />
@@ -259,7 +318,36 @@ export default function ListaCompras() {
                     </button>
                 </div>
 
-                {modoCrearIngrediente ? (
+                {/* Vista 1: Formulario de Edición */}
+                {itemEditando ? (
+                    <form onSubmit={handleGuardarEdicion} className="space-y-4 pb-8 animate-fade-in">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 mb-4">
+                                Actualizando cantidad para: <span className="font-bold text-gray-800">{itemEditando.ingrediente.nombre}</span>
+                            </p>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nueva Cantidad ({itemEditando.ingrediente.unidad.nombre})
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Ingresa la nueva cantidad"
+                                value={formCantidad}
+                                onChange={(e) => setFormCantidad(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="w-full bg-blue-600 text-white font-bold rounded-xl p-4 mt-4 shadow-md active:bg-blue-700"
+                        >
+                            Actualizar cantidad
+                        </button>
+                    </form>
+                
+                ) : modoCrearIngrediente ? (
                     <form onSubmit={handleCrearIngrediente} className="space-y-5 pb-8 animate-fade-in">
                         <div className="space-y-4">
                             <div>
@@ -302,7 +390,7 @@ export default function ListaCompras() {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-600 mb-1">Calorías (kcal)</label>
                                     <input
-                                        type="number" step="0.1"
+                                        type="number" step="0.1" min="0"
                                         className="w-full bg-orange-50/50 border border-orange-100 text-gray-800 rounded-xl p-2.5 focus:ring-2 focus:ring-orange-400 outline-none"
                                         placeholder="0"
                                         value={nuevoIngCalorias}
@@ -312,7 +400,7 @@ export default function ListaCompras() {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-600 mb-1">Proteína (g)</label>
                                     <input
-                                        type="number" step="0.1"
+                                        type="number" step="0.1" min="0"
                                         className="w-full bg-blue-50/50 border border-blue-100 text-gray-800 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-400 outline-none"
                                         placeholder="0"
                                         value={nuevoIngProteina}
@@ -322,7 +410,7 @@ export default function ListaCompras() {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-600 mb-1">Carbohidratos (g)</label>
                                     <input
-                                        type="number" step="0.1"
+                                        type="number" step="0.1" min="0"
                                         className="w-full bg-green-50/50 border border-green-100 text-gray-800 rounded-xl p-2.5 focus:ring-2 focus:ring-green-400 outline-none"
                                         placeholder="0"
                                         value={nuevoIngCarbs}
@@ -332,7 +420,7 @@ export default function ListaCompras() {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-600 mb-1">Grasas (g)</label>
                                     <input
-                                        type="number" step="0.1"
+                                        type="number" step="0.1" min="0"
                                         className="w-full bg-yellow-50/50 border border-yellow-100 text-gray-800 rounded-xl p-2.5 focus:ring-2 focus:ring-yellow-400 outline-none"
                                         placeholder="0"
                                         value={nuevoIngGrasas}
@@ -349,6 +437,7 @@ export default function ListaCompras() {
                             Guardar Ingrediente
                         </button>
                     </form>
+                
                 ) : (
                     <form onSubmit={handleAgregarManual} className="space-y-4 pb-8 animate-fade-in">
                         <div>
@@ -383,6 +472,7 @@ export default function ListaCompras() {
                             <input
                                 type="number"
                                 step="0.01"
+                                min="0.01"
                                 className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="Ej. 1000 (para 1kg)"
                                 value={formCantidad}
