@@ -154,6 +154,7 @@ export default function ListaCompras() {
         }
     };
 
+
     const abrirParaEditar = (item) => {
         setItemEditando(item);
         setFormCantidad(item.cantidad_comprar.toString());
@@ -467,7 +468,6 @@ export default function ListaCompras() {
                         </button>
                     </form>
                 
-                {/* Vista 3: Formulario Agregar a la Lista */}
                 ) : (
                     <form onSubmit={handleAgregarManual} className="space-y-4 pb-8 animate-fade-in">
                         <div>
