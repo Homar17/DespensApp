@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Minus } from 'lucide-react';
 
 export default function Inventario() {
     // Estados de datos
@@ -9,6 +9,7 @@ export default function Inventario() {
 
     // Estados de la interfaz (Bottom Sheet)
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [modo, setModo] = useState('agregar'); // 'agregar' o 'retirar'
     const [formIngredienteId, setFormIngredienteId] = useState('');
     const [formCantidad, setFormCantidad] = useState('');
 
@@ -45,9 +46,31 @@ export default function Inventario() {
         return `${cant} ${unidad}`;
     };
 
-    const handleAgregarStock = async (e) => {
+    const handleAccionStock = async (e) => {
         e.preventDefault();
         if (!formIngredienteId || !formCantidad) return;
+
+        let cantidadMandar = parseFloat(formCantidad);
+        const idIngredienteInt = parseInt(formIngredienteId);
+
+        // Validaciones si estamos en modo "retirar"
+        if (modo === 'retirar') {
+            const itemExistente = inventario.find(item => item.id_ingrediente === idIngredienteInt);
+            
+            if (!itemExistente) {
+                alert("No tienes este ingrediente en tu inventario para retirar.");
+                return;
+            }
+            if (cantidadMandar > itemExistente.cantidad_actual) {
+                alert(`No puedes retirar más de lo que tienes. Tienes ${itemExistente.cantidad_actual}.`);
+                return;
+            }
+            // Convertimos la cantidad a negativo para que el backend la reste
+            cantidadMandar = -Math.abs(cantidadMandar);
+        } else {
+            // Si es agregar, nos aseguramos de que sea positivo
+            cantidadMandar = Math.abs(cantidadMandar);
+        }
 
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/inventario/`, {
@@ -55,8 +78,8 @@ export default function Inventario() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id_usuario: ID_USUARIO,
-                    id_ingrediente: parseInt(formIngredienteId),
-                    cantidad_actual: parseFloat(formCantidad)
+                    id_ingrediente: idIngredienteInt,
+                    cantidad_actual: cantidadMandar
                 })
             });
 
@@ -67,8 +90,15 @@ export default function Inventario() {
                 cargarDatos();
             }
         } catch (error) {
-            console.error("Error al guardar stock:", error);
+            console.error("Error al actualizar stock:", error);
         }
+    };
+
+    // Función para abrir el menú directamente en modo retirar desde un item
+    const abrirParaRetirar = (idIngrediente) => {
+        setModo('retirar');
+        setFormIngredienteId(idIngrediente.toString());
+        setIsSheetOpen(true);
     };
 
     if (cargando) {
@@ -88,7 +118,7 @@ export default function Inventario() {
                         <p className="text-sm text-gray-500">Ingredientes disponibles</p>
                     </div>
                     <button
-                        onClick={() => setIsSheetOpen(true)}
+                        onClick={() => { setModo('agregar'); setFormIngredienteId(''); setIsSheetOpen(true); }}
                         className="bg-blue-600 text-white p-3 rounded-full shadow-md hover:bg-blue-700 active:scale-95 transition-all"
                     >
                         <Plus size={24} />
@@ -106,12 +136,22 @@ export default function Inventario() {
                                 key={item.id_ingrediente}
                                 className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex justify-between items-center"
                             >
-                                <h3 className="font-semibold text-gray-800 text-lg">
-                                    {item.ingrediente.nombre}
-                                </h3>
-                                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold tracking-wide">
-                                    {formatearCantidad(item.cantidad_actual, item.ingrediente.unidad.nombre)}
+                                <div>
+                                    <h3 className="font-semibold text-gray-800 text-lg">
+                                        {item.ingrediente.nombre}
+                                    </h3>
+                                    <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-sm font-bold tracking-wide mt-1 inline-block">
+                                        {formatearCantidad(item.cantidad_actual, item.ingrediente.unidad.nombre)}
+                                    </span>
                                 </div>
+                                
+                                {/* Botón rápido para restar desde la tarjeta */}
+                                <button 
+                                    onClick={() => abrirParaRetirar(item.id_ingrediente)}
+                                    className="bg-red-50 text-red-500 p-2 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
+                                >
+                                    <Minus size={20} />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -129,14 +169,32 @@ export default function Inventario() {
                 className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl p-6 z-50 transform transition-transform duration-300 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-full'
                     }`}
             >
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-800">Agregar Stock</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-800">Gestionar Stock</h3>
                     <button onClick={() => setIsSheetOpen(false)} className="text-gray-400 hover:text-gray-600">
                         <X size={24} />
                     </button>
                 </div>
 
-                <form onSubmit={handleAgregarStock} className="space-y-4 pb-8">
+                {/* Selector de Modo (Agregar / Retirar) */}
+                <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+                    <button
+                        type="button"
+                        onClick={() => setModo('agregar')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${modo === 'agregar' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                        Agregar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setModo('retirar')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${modo === 'retirar' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                        Retirar
+                    </button>
+                </div>
+
+                <form onSubmit={handleAccionStock} className="space-y-4 pb-8">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Ingrediente</label>
                         <select
@@ -146,17 +204,25 @@ export default function Inventario() {
                             required
                         >
                             <option value="" disabled>Selecciona un ingrediente...</option>
-                            {catalogoIngredientes.map(ing => (
-                                <option key={ing.id} value={ing.id}>
-                                    {ing.nombre} (en {ing.unidad.nombre})
-                                </option>
-                            ))}
+                            {/* Si estamos en modo retirar, solo mostramos los ingredientes que sí tenemos en la alacena */}
+                            {modo === 'retirar' 
+                                ? inventario.map(item => (
+                                    <option key={item.id_ingrediente} value={item.id_ingrediente}>
+                                        {item.ingrediente.nombre} (Disp: {item.cantidad_actual})
+                                    </option>
+                                  ))
+                                : catalogoIngredientes.map(ing => (
+                                    <option key={ing.id} value={ing.id}>
+                                        {ing.nombre} (en {ing.unidad.nombre})
+                                    </option>
+                                  ))
+                            }
                         </select>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Cantidad (en unidad base)
+                            {modo === 'agregar' ? 'Cantidad a agregar' : 'Cantidad a retirar'}
                         </label>
                         <input
                             type="number"
@@ -171,9 +237,11 @@ export default function Inventario() {
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white font-bold rounded-xl p-4 mt-4 shadow-md active:bg-blue-700"
+                        className={`w-full text-white font-bold rounded-xl p-4 mt-4 shadow-md transition-all ${
+                            modo === 'agregar' ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                        }`}
                     >
-                        Guardar en Alacena
+                        {modo === 'agregar' ? 'Guardar en Alacena' : 'Retirar de Alacena'}
                     </button>
                 </form>
             </div>
